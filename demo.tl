@@ -25,3 +25,13 @@ foo: bar
 GET /m/user/get
 output: json
 user_id: 90002486
+
+
+# 定义更多接口
+=== Test: /m/books/get 获取用户信息接口
+
+# 定义请求的数据, 暂时仅支持GET|POST
+--- request
+GET /m/user/get
+output: json
+user_id: 90002486

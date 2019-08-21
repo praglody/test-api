@@ -11,6 +11,12 @@ User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_6) AppleWebKit/537.36 (
 Content-Type: application/x-www-form-urlencoded
 #Content-Type: multipart/form-data
 
+# 全局GET参数
+--- get
+token: 1b4197f70b8beda077a70144d1abe982
+output: json
+user_id: 90002486
+
 # 定义一个接口
 === Test: /m/user/get 获取用户信息接口
 

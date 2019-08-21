@@ -124,7 +124,7 @@ if ($test_index <= 0 || $test_index > sizeof($api_list)) {
     }
     printf(str_repeat("*", $max_chars) . "\n");
     printf($output);
-    printf(str_repeat("*", $max_chars) . "\n");
+    //printf(str_repeat("*", $max_chars) . "\n");
     exit(1);
 }
 

@@ -28,10 +28,10 @@ user_id: 90002486
 
 
 # 定义更多接口
-=== Test: /m/books/get 获取用户信息接口
+=== Test: /m/user_books/get 获取用户图书的接口
 
 # 定义请求的数据, 暂时仅支持GET|POST
 --- request
-GET /m/user/get
+GET /m/user_books/get
 output: json
 user_id: 90002486

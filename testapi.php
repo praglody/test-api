@@ -16,12 +16,12 @@ if ($argc < 2 || !file_exists($test_file)) {
 
 
 $base_header = [];
+$base_get = [];
 // 解析全局配置
 $base_config = [
     "BASE_URL" => "http://127.0.0.1",
 ];
 preg_match_all("/\s*?@\s*?(\w*)\s*?:\s*+(.*+)/", $test_content, $base_config_match);
-
 if (!empty($base_config_match)) {
     foreach ($base_config_match[0] as $key => $val) {
         $base_config[$base_config_match[1][$key]] = $base_config_match[2][$key];
@@ -32,16 +32,35 @@ if (!empty($base_config_match)) {
 }
 
 // 解析header
-preg_match("/---\s*?header\s*?\\n(.*?)===/is", $test_content, $base_header_match);
-if (!empty($base_header_match)) {
-    $base_header_match = explode("\n", trim($base_header_match[1]));
-    foreach ($base_header_match as $line) {
-        if (empty($line)) {
-            continue;
-        } elseif (preg_match("/\s*?#.*+/", $line)) {
-            continue;
-        } elseif (preg_match("/\s*+([\w\-]*)\s*+:(.*+)/", $line, $match)) {
-            $base_header[$match[1]] = trim($match[2]);
+preg_match("/(.*?)===/s", $test_content, $head_match);
+$lines = explode("\n", trim($head_match[1]));
+
+for ($i = 1; $i < sizeof($lines); $i++) {
+    if (preg_match("/^---\s*header/", $lines[$i])) {
+    // 获取请求参数
+        while (++$i < sizeof($lines)) {
+            if (empty($lines[$i]) || preg_match("/\s*?#.*+/", $lines[$i])) {
+                continue;
+            }
+            if (preg_match("/\s*+([\w\-]*)\s*+:(.*+)/", $lines[$i], $match)) {
+                $base_header[$match[1]] = trim($match[2]);
+            } else {
+                $i--;
+                break;
+            }
+        }
+    } elseif (preg_match("/---\s*get/", $lines[$i])) {
+        // 全局get 定义
+        while (++$i < sizeof($lines)) {
+            if (empty($lines[$i]) || preg_match("/\s*?#.*+/", $lines[$i])) {
+                continue;
+            }
+            if (preg_match("/\s*+([\w-]*)\s*+:(.*+)/", $lines[$i], $match)) {
+                $base_get[$match[1]] = trim($match[2]);
+            } else {
+                $i--;
+                break;
+            }
         }
     }
 }
@@ -130,6 +149,7 @@ if ($test_index <= 0 || $test_index > sizeof($api_list)) {
 
 $api = $api_list[$test_index-1];
 $api['header'] = array_merge($base_header, $api['header']);
+$api['param'] = array_merge($base_get, $api['param']);
 
 $ch = curl_init();
 curl_setopt($ch, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_1_1);

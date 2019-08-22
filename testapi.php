@@ -1,10 +1,10 @@
 #!/usr/bin/env php
 <?php
 
-define("COMMENT_REGEX", "/^\s*#.*/");                                       // 单行注释正则
-define("KEY_VALUE_REGEX", "/^\s*([\w-]*)\s*:\s*(.*?)\s*(#.*?)?\s*$/");      // key value 且带注释的正则
-define("GLOBAL_PARAM_REGEX", "/\s*@\s*([\w-]*)\s*:\s*(.*)\s*/");                  // 全局变量正则
-define("REQUEST_PARAM_REGEX", "/^\s*---\s*(header|get|post)\s*(#.*?)?\s*$/");
+define("COMMENT_REGEX", "/^\s*#.*/");                                           // 单行注释正则
+define("KEY_VALUE_REGEX", "/^\s*([\w-]*)\s*:\s*(.*?)\s*(#.*?)?\s*$/");          // key value 且带注释的正则
+define("GLOBAL_PARAM_REGEX", "/\s*@\s*([\w-]*)\s*:\s*(.*)\s*/");                // 全局变量正则
+define("REQUEST_PARAM_REGEX", "/^\s*---\s*(header|get|post)\s*(#.*?)?\s*$/");   // 请求参数标识的正则
 
 $test_file = isset($argv[1]) ? $argv[1] : '';
 
@@ -147,14 +147,8 @@ if ($test_index <= 0 || $test_index > sizeof($api_list)) {
     }
     printf(str_repeat("*", $max_chars) . "\n");
     printf($output);
-    //printf(str_repeat("*", $max_chars) . "\n");
     exit(1);
 }
-
-$api = $api_list[$test_index-1];
-$api['header'] = array_merge($_HEADER, $api['header']);
-$api['get'] = array_merge($_GET, $api['get']);
-$api['post'] = array_merge($_GET, $api['post']);
 
 $ch = curl_init();
 curl_setopt($ch, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_1_1);
@@ -164,12 +158,18 @@ curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
 curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false); // 对认证证书来源的检查
 curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false); // 从证书中检查SSL加密算法是否存在
 
+$api = $api_list[$test_index-1];
+$api['header'] = array_merge($_HEADER, $api['header']??[]);
+$api['get'] = array_merge($_GET, $api['get']??[]);
+$api['post'] = array_merge($_GET, $api['post']??[]);
 if (!empty($api['get'])) {
     if (strpos($api['uri'], "?") === false) {
         $request_url = $api['uri'] . "?" . http_build_query($api['get']);
     } else {
         $request_url .= $api['uri'] . "&" . http_build_query($api['get']);
     }
+} else {
+    $request_url = $api['uri'];
 }
 
 if ($api['method'] == "GET") {
@@ -178,15 +178,18 @@ if ($api['method'] == "GET") {
     }
     unset($api['post']);
 } elseif ($api['method'] == "POST") {
-    $post_data = $api['post'];
-    if (isset($api['header']['Content-Type']) && preg_match("/multipart\/form-data/", $api['header']['Content-Type'])) {
-        $api['header']['Content-Type'] = "multipart/form-data";
-    } else {
-        $api['header']['Content-Type'] = "application/x-www-form-urlencoded";
-        $post_data = http_build_query($api['param']);
-    }
     curl_setopt($ch, CURLOPT_POST, true);
-    !empty($post_data) && curl_setopt($ch, CURLOPT_POSTFIELDS, $post_data);
+    if (!empty($api['post'])) {
+        $post_data = $api['post'];
+        if (isset($api['header']['Content-Type'])
+                && preg_match("/multipart\/form-data/", $api['header']['Content-Type'])) {
+            $api['header']['Content-Type'] = "multipart/form-data";
+        } else {
+            $api['header']['Content-Type'] = "application/x-www-form-urlencoded";
+            $post_data = http_build_query($api['param']);
+        }
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $post_data);
+    }
 }
 
 $tmp = $api['header'];
@@ -216,4 +219,5 @@ try {
     }
 } catch (Exception $e) {
     echo $response;
+    exit(1);
 }

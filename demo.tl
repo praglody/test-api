@@ -6,14 +6,14 @@
 
 # 全局hader配置
 --- header
-Cache-Control: no-cache
+Cache-Control: no-cache         # 禁用服务器缓存
 User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/76.0.3809.100 Safari/537.36
 Content-Type: application/x-www-form-urlencoded
 #Content-Type: multipart/form-data
 
 # 全局GET参数
 --- get
-token: 1b4197f70b8beda077a70144d1abe982
+token: 1b4197f70b8beda077a70144d1abe982     # 万能toten
 output: json
 user_id: 90002486
 

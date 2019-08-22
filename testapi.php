@@ -1,6 +1,9 @@
 #!/usr/bin/env php
 <?php
 
+define("COMMENT_REGEX", "/^\s*#.*+/");                                      // 单行注释正则
+define("KEY_VALUE_REGEX", "/^\s*([\w\-]*)\s*:\s*(.*?)\s*(#.*?)?\s*$/");     // key value 且带注释的正则
+
 $test_file = isset($argv[1]) ? $argv[1] : '';
 
 if ($argc < 3) {
@@ -39,10 +42,10 @@ for ($i = 1; $i < sizeof($lines); $i++) {
     if (preg_match("/^---\s*header/", $lines[$i])) {
     // 获取请求参数
         while (++$i < sizeof($lines)) {
-            if (empty($lines[$i]) || preg_match("/\s*?#.*+/", $lines[$i])) {
+            if (empty($lines[$i]) || preg_match(COMMENT_REGEX, $lines[$i])) {
                 continue;
             }
-            if (preg_match("/\s*+([\w\-]*)\s*+:(.*+)/", $lines[$i], $match)) {
+            if (preg_match(KEY_VALUE_REGEX, $lines[$i], $match)) {
                 $base_header[$match[1]] = trim($match[2]);
             } else {
                 $i--;
@@ -52,10 +55,10 @@ for ($i = 1; $i < sizeof($lines); $i++) {
     } elseif (preg_match("/---\s*get/", $lines[$i])) {
         // 全局get 定义
         while (++$i < sizeof($lines)) {
-            if (empty($lines[$i]) || preg_match("/\s*?#.*+/", $lines[$i])) {
+            if (empty($lines[$i]) || preg_match(COMMENT_REGEX, $lines[$i])) {
                 continue;
             }
-            if (preg_match("/\s*+([\w-]*)\s*+:(.*+)/", $lines[$i], $match)) {
+            if (preg_match(KEY_VALUE_REGEX, $lines[$i], $match)) {
                 $base_get[$match[1]] = trim($match[2]);
             } else {
                 $i--;
@@ -101,10 +104,10 @@ foreach ($api_list_match as $val) {
             }
             // 获取请求参数
             while (++$i < sizeof($lines)) {
-                if (empty($lines[$i]) || preg_match("/\s*?#.*+/", $lines[$i])) {
+                if (empty($lines[$i]) || preg_match(COMMENT_REGEX, $lines[$i])) {
                     continue;
                 }
-                if (preg_match("/\s*+(\w*)\s*+:(.*+)/", $lines[$i], $match)) {
+                if (preg_match(KEY_VALUE_REGEX, $lines[$i], $match)) {
                     $api['param'][$match[1]] = trim($match[2]);
                 } else {
                     $i--;
@@ -114,10 +117,10 @@ foreach ($api_list_match as $val) {
         } elseif (preg_match("/^---\s*?header/", $lines[$i])) {
             // header 定义
             while (++$i < sizeof($lines)) {
-                if (empty($lines[$i]) || preg_match("/\s*?#.*+/", $lines[$i])) {
+                if (empty($lines[$i]) || preg_match(COMMENT_REGEX, $lines[$i])) {
                     continue;
                 }
-                if (preg_match("/\s*+([\w-]*)\s*+:(.*+)/", $lines[$i], $match)) {
+                if (preg_match(KEY_VALUE_REGEX, $lines[$i], $match)) {
                     $api['header'][$match[1]] = trim($match[2]);
                 } else {
                     $i--;
@@ -146,6 +149,11 @@ if ($test_index <= 0 || $test_index > sizeof($api_list)) {
     //printf(str_repeat("*", $max_chars) . "\n");
     exit(1);
 }
+
+var_dump($base_get);
+var_dump($base_header);
+var_dump($api);
+exit;
 
 $api = $api_list[$test_index-1];
 $api['header'] = array_merge($base_header, $api['header']);

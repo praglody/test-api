@@ -18,9 +18,13 @@ Usage: ./testapi.php [api.pl] [api_id]
   .
   .
   .
-*******************************************************
+  
 ```
 
 3. 根据上面列出的 api_id 执行 api 请求
 
 `./testapi.php demo.tl 1`
+
+# How to defined your own api template layout?
+
+见 [demo.pl](demo.tl)。

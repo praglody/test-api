@@ -150,11 +150,6 @@ if ($test_index <= 0 || $test_index > sizeof($api_list)) {
     exit(1);
 }
 
-var_dump($base_get);
-var_dump($base_header);
-var_dump($api);
-exit;
-
 $api = $api_list[$test_index-1];
 $api['header'] = array_merge($base_header, $api['header']);
 $api['param'] = array_merge($base_get, $api['param']);

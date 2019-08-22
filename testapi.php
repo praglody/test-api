@@ -1,8 +1,10 @@
 #!/usr/bin/env php
 <?php
 
-define("COMMENT_REGEX", "/^\s*#.*+/");                                      // 单行注释正则
-define("KEY_VALUE_REGEX", "/^\s*([\w\-]*)\s*:\s*(.*?)\s*(#.*?)?\s*$/");     // key value 且带注释的正则
+define("COMMENT_REGEX", "/^\s*#.*/");                                       // 单行注释正则
+define("KEY_VALUE_REGEX", "/^\s*([\w-]*)\s*:\s*(.*?)\s*(#.*?)?\s*$/");      // key value 且带注释的正则
+define("GLOBAL_PARAM_REGEX", "/\s*@\s*([\w-]*)\s*:\s*(.*)\s*/");                  // 全局变量正则
+define("REQUEST_PARAM_REGEX", "/^\s*---\s*(header|get|post)\s*(#.*?)?\s*$/");
 
 $test_file = isset($argv[1]) ? $argv[1] : '';
 
@@ -18,59 +20,54 @@ if ($argc < 2 || !file_exists($test_file)) {
 }
 
 
-$base_header = [];
-$base_get = [];
-// 解析全局配置
-$base_config = [
+$_HEADER = [];
+$_POST = [];
+$_GET = [];
+$_CONFIG = [
     "BASE_URL" => "http://127.0.0.1",
 ];
-preg_match_all("/\s*?@\s*?(\w*)\s*?:\s*+(.*+)/", $test_content, $base_config_match);
+// 解析全局配置
+preg_match_all(GLOBAL_PARAM_REGEX, $test_content, $base_config_match);
 if (!empty($base_config_match)) {
     foreach ($base_config_match[0] as $key => $val) {
-        $base_config[$base_config_match[1][$key]] = $base_config_match[2][$key];
+        $_CONFIG[$base_config_match[1][$key]] = $base_config_match[2][$key];
     }
-    if (isset($base_config['USER_AGENT'])) {
-        $base_header['User-Agent'] = $base_config['USER_AGENT'];
+    if (isset($_CONFIG['USER_AGENT'])) {
+        $_HEADER['User-Agent'] = $_CONFIG['USER_AGENT'];
     }
 }
 
 // 解析header
-preg_match("/(.*?)===/s", $test_content, $head_match);
+preg_match("/([\s\S]*?)===/", $test_content, $head_match);
 $lines = explode("\n", trim($head_match[1]));
 
 for ($i = 1; $i < sizeof($lines); $i++) {
-    if (preg_match("/^---\s*header/", $lines[$i])) {
-    // 获取请求参数
+    if (preg_match(REQUEST_PARAM_REGEX, $lines[$i], $request_param_type_match)) {
+        $match_param = [];
         while (++$i < sizeof($lines)) {
             if (empty($lines[$i]) || preg_match(COMMENT_REGEX, $lines[$i])) {
                 continue;
             }
             if (preg_match(KEY_VALUE_REGEX, $lines[$i], $match)) {
-                $base_header[$match[1]] = trim($match[2]);
+                $match_param[$match[1]] = trim($match[2]);
             } else {
                 $i--;
                 break;
             }
         }
-    } elseif (preg_match("/---\s*get/", $lines[$i])) {
-        // 全局get 定义
-        while (++$i < sizeof($lines)) {
-            if (empty($lines[$i]) || preg_match(COMMENT_REGEX, $lines[$i])) {
-                continue;
-            }
-            if (preg_match(KEY_VALUE_REGEX, $lines[$i], $match)) {
-                $base_get[$match[1]] = trim($match[2]);
-            } else {
-                $i--;
-                break;
-            }
+        if ($request_param_type_match[1] == "header") {
+            $_HEADER += $match_param;
+        } elseif ($request_param_type_match[1] == "get") {
+            $_GET += $match_param;
+        } elseif ($request_param_type_match[1] == "post") {
+            $_POST += $match_param;
         }
     }
 }
 
 $api_list = [];
 $api_list_match = [];
-preg_match("/===(.*+)/is", $test_content, $api_list_match);
+preg_match("/===([\s\S]*)/", $test_content, $api_list_match);
 $api_list_match = explode("===", $api_list_match[1]);
 
 $api_index = 1;
@@ -81,7 +78,7 @@ foreach ($api_list_match as $val) {
         exit(1);
     }
     $api = ['header' => []];
-    if (preg_match("/Test\s*+:\s*+(.*+)/", $lines[0], $match)) {
+    if (preg_match("/^\s*Test\s*:\s*(.*)/", $lines[0], $match)) {
         $api['index'] = $api_index++;
         $api['title'] = trim($match[1]);
     } else {
@@ -90,43 +87,47 @@ foreach ($api_list_match as $val) {
     }
 
     for ($i = 1; $i < sizeof($lines); $i++) {
-        if (preg_match("/^---\s*?request/", $lines[$i])) {
+        if (preg_match("/---\s*request/", $lines[$i])) {
             // request 请求定义
             while (++$i < sizeof($lines)) {
-                if (preg_match("/(GET|POST|DELETE|PUT)\s*+(.*+)/", $lines[$i], $match)) {
+                if (preg_match("/(GET|POST|DELETE|PUT)\s*(.*)/", $lines[$i], $match)) {
                     $api['method'] = $match[1];
                     $api['uri'] = trim($match[2]);
+                    if (empty($api['method']) || empty($api['uri'])) {
+                        printf("api格式不正确\n%s\n", $val);
+                        exit(1);
+                    }
                     break;
                 }
             }
-            if (empty($api['method']) || empty($api['uri'])) {
-                printf("api格式不正确\n%s\n", $val);
-            }
+
             // 获取请求参数
             while (++$i < sizeof($lines)) {
                 if (empty($lines[$i]) || preg_match(COMMENT_REGEX, $lines[$i])) {
                     continue;
                 }
                 if (preg_match(KEY_VALUE_REGEX, $lines[$i], $match)) {
-                    $api['param'][$match[1]] = trim($match[2]);
+                    $api['get'][$match[1]] = trim($match[2]);
                 } else {
                     $i--;
                     break;
                 }
             }
-        } elseif (preg_match("/^---\s*?header/", $lines[$i])) {
-            // header 定义
+        } elseif (preg_match(REQUEST_PARAM_REGEX, $lines[$i], $request_param_type_match)) {
+            $match_param = [];
             while (++$i < sizeof($lines)) {
                 if (empty($lines[$i]) || preg_match(COMMENT_REGEX, $lines[$i])) {
                     continue;
                 }
                 if (preg_match(KEY_VALUE_REGEX, $lines[$i], $match)) {
-                    $api['header'][$match[1]] = trim($match[2]);
+                    $match_param[$match[1]] = trim($match[2]);
                 } else {
                     $i--;
                     break;
                 }
             }
+
+            $api[$request_param_type_match[1]] = $match_param;
         }
     }
     $api_list[] = $api;
@@ -151,32 +152,34 @@ if ($test_index <= 0 || $test_index > sizeof($api_list)) {
 }
 
 $api = $api_list[$test_index-1];
-$api['header'] = array_merge($base_header, $api['header']);
-$api['param'] = array_merge($base_get, $api['param']);
+$api['header'] = array_merge($_HEADER, $api['header']);
+$api['get'] = array_merge($_GET, $api['get']);
+$api['post'] = array_merge($_GET, $api['post']);
 
 $ch = curl_init();
 curl_setopt($ch, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_1_1);
-curl_setopt($ch, CURLOPT_USERAGENT, $base_header['User-Agent']);
 curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 30);
 curl_setopt($ch, CURLOPT_TIMEOUT, 30);
 curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
 curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false); // 对认证证书来源的检查
 curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false); // 从证书中检查SSL加密算法是否存在
-if ($api['method'] == "GET") {
-    if (!empty($api['param'])) {
-        if (strpos($api['uri'], "?") === false) {
-            $api['uri'] .= "?" . http_build_query($api['param']);
-        } else {
-            $api['uri'] .= "&" . http_build_query($api['param']);
-        }
+
+if (!empty($api['get'])) {
+    if (strpos($api['uri'], "?") === false) {
+        $request_url = $api['uri'] . "?" . http_build_query($api['get']);
+    } else {
+        $request_url .= $api['uri'] . "&" . http_build_query($api['get']);
     }
-    curl_setopt($ch, CURLOPT_URL, $base_config['BASE_URL'] . $api['uri']);
+}
+
+if ($api['method'] == "GET") {
     if (isset($api['header']['Content-Type'])) {
         unset($api['header']['Content-Type']);
     }
+    unset($api['post']);
 } elseif ($api['method'] == "POST") {
-    $post_data = $api['param'];
-    if (isset($api['header']['Content-Type']) && preg_match("/multipart\/form\-data/", $api['header']['Content-Type'])) {
+    $post_data = $api['post'];
+    if (isset($api['header']['Content-Type']) && preg_match("/multipart\/form-data/", $api['header']['Content-Type'])) {
         $api['header']['Content-Type'] = "multipart/form-data";
     } else {
         $api['header']['Content-Type'] = "application/x-www-form-urlencoded";
@@ -184,7 +187,6 @@ if ($api['method'] == "GET") {
     }
     curl_setopt($ch, CURLOPT_POST, true);
     !empty($post_data) && curl_setopt($ch, CURLOPT_POSTFIELDS, $post_data);
-    curl_setopt($ch, CURLOPT_URL, $base_config['BASE_URL'] . $api['uri']);
 }
 
 $tmp = $api['header'];
@@ -192,10 +194,11 @@ $api['header'] = [];
 foreach ($tmp as $key => $val) {
     array_push($api['header'], "$key: $val");
 }
+curl_setopt($ch, CURLOPT_URL, $_CONFIG['BASE_URL'] . $request_url);
 curl_setopt($ch, CURLOPT_HTTPHEADER, $api['header']);
 
-printf("%s %s\n\n", $api['method'], $base_config['BASE_URL'] . $api['uri']);
-printf("REQUEST: %s\nRESPONSE: ", json_encode($api, JSON_PRETTY_PRINT|JSON_UNESCAPED_UNICODE));
+printf("%s %s\n\n", $api['method'], $_CONFIG['BASE_URL'] . $request_url);
+printf("REQUEST: %s\nRESPONSE: ", var_export($api, true));
 
 $response = curl_exec($ch);
 

@@ -17,20 +17,30 @@ token: 1b4197f70b8beda077a70144d1abe982     # 万能toten
 output: json
 user_id: 90002486
 
-# 定义一个接口
+# 全局POST参数，仅适用POST接口
+--- post
+token: 1b4197f70b8beda077a70144d1abe982     # 万能toten
+
+
+# 定义一个接口，`===` 是一个接口的起始标志符
 === Test: /m/user/get 获取用户信息接口
 
-# 定义接口特有的header
+# 定义接口特有的header，如果重名，会覆盖全局的header
+# `--- header`是定义header的标识符
 --- header
-# 每个请求单独的heder定义
-# 如果重名，会覆盖全局的header
 foo: bar
 
 # 定义请求的数据, 暂时仅支持GET|POST
 --- request
 GET /m/user/get
+# 请求标识行的下一行就是GET参数，可以不写或直接将get参数拼到url后面
 output: json
 user_id: 90002486
+
+# 定义接口的POST参数，仅post请求生效
+--- post
+user_name: praglody
+
 
 
 # 定义更多接口

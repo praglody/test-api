@@ -27,4 +27,4 @@ Usage: ./testapi.php [api.pl] [api_id]
 
 # How to defined your own api template layout?
 
-见 [demo.pl](demo.tl)。
+见 [demo.tl](demo.tl)。

@@ -166,7 +166,7 @@ if (!empty($api['get'])) {
     if (strpos($api['uri'], "?") === false) {
         $request_url = $api['uri'] . "?" . http_build_query($api['get']);
     } else {
-        $request_url .= $api['uri'] . "&" . http_build_query($api['get']);
+        $request_url = $api['uri'] . "&" . http_build_query($api['get']);
     }
 } else {
     $request_url = $api['uri'];

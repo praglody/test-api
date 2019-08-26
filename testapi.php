@@ -19,6 +19,10 @@ if ($argc < 2 || !file_exists($test_file)) {
     $test_content = file_get_contents($test_file);
 }
 
+$test_content = array_filter(explode("\n", $test_content), function ($line) {
+    return !(empty($line) || preg_match(COMMENT_REGEX, $line));
+});
+$test_content = implode("\n", $test_content);
 
 $_HEADER = [];
 $_POST = [];
@@ -133,7 +137,7 @@ foreach ($api_list_match as $val) {
     $api_list[] = $api;
 }
 
-$test_index = $argv[2]?? 0;
+$test_index = $argv[2] ?? 0;
 
 if ($test_index <= 0 || $test_index > sizeof($api_list)) {
     $max_chars = 0;
@@ -158,10 +162,10 @@ curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
 curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false); // 对认证证书来源的检查
 curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false); // 从证书中检查SSL加密算法是否存在
 
-$api = $api_list[$test_index-1];
-$api['header'] = array_merge($_HEADER, $api['header']??[]);
-$api['get'] = array_merge($_GET, $api['get']??[]);
-$api['post'] = array_merge($_GET, $api['post']??[]);
+$api = $api_list[$test_index - 1];
+$api['header'] = array_merge($_HEADER, $api['header'] ?? []);
+$api['get'] = array_merge($_GET, $api['get'] ?? []);
+$api['post'] = array_merge($_GET, $api['post'] ?? []);
 if (!empty($api['get'])) {
     if (strpos($api['uri'], "?") === false) {
         $request_url = $api['uri'] . "?" . http_build_query($api['get']);
@@ -182,7 +186,7 @@ if ($api['method'] == "GET") {
     if (!empty($api['post'])) {
         $post_data = $api['post'];
         if (isset($api['header']['Content-Type'])
-                && preg_match("/multipart\/form-data/", $api['header']['Content-Type'])) {
+            && preg_match("/multipart\/form-data/", $api['header']['Content-Type'])) {
             $api['header']['Content-Type'] = "multipart/form-data";
         } else {
             $api['header']['Content-Type'] = "application/x-www-form-urlencoded";
@@ -211,7 +215,7 @@ if ($response === false) {
 }
 curl_close($ch);
 try {
-    $res = json_encode(json_decode($response, true), JSON_PRETTY_PRINT|JSON_UNESCAPED_UNICODE);
+    $res = json_encode(json_decode($response, true), JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
     if ($res == null || $res == "null") {
         throw new Exception();
     } else {

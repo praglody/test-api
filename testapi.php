@@ -49,9 +49,6 @@ for ($i = 1; $i < sizeof($lines); $i++) {
     if (preg_match(REQUEST_PARAM_REGEX, $lines[$i], $request_param_type_match)) {
         $match_param = [];
         while (++$i < sizeof($lines)) {
-            if (empty($lines[$i]) || preg_match(COMMENT_REGEX, $lines[$i])) {
-                continue;
-            }
             if (preg_match(KEY_VALUE_REGEX, $lines[$i], $match)) {
                 $match_param[$match[1]] = trim($match[2]);
             } else {
@@ -107,9 +104,6 @@ foreach ($api_list_match as $val) {
 
             // 获取请求参数
             while (++$i < sizeof($lines)) {
-                if (empty($lines[$i]) || preg_match(COMMENT_REGEX, $lines[$i])) {
-                    continue;
-                }
                 if (preg_match(KEY_VALUE_REGEX, $lines[$i], $match)) {
                     $api['get'][$match[1]] = trim($match[2]);
                 } else {
@@ -120,9 +114,6 @@ foreach ($api_list_match as $val) {
         } elseif (preg_match(REQUEST_PARAM_REGEX, $lines[$i], $request_param_type_match)) {
             $match_param = [];
             while (++$i < sizeof($lines)) {
-                if (empty($lines[$i]) || preg_match(COMMENT_REGEX, $lines[$i])) {
-                    continue;
-                }
                 if (preg_match(KEY_VALUE_REGEX, $lines[$i], $match)) {
                     $match_param[$match[1]] = trim($match[2]);
                 } else {

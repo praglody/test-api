@@ -4,7 +4,7 @@
 define("COMMENT_REGEX", "/^\s*#.*/");                                           // 单行注释正则
 define("KEY_VALUE_REGEX", "/^\s*([\w-]*)\s*:\s*(.*?)\s*(#.*?)?\s*$/");          // key value 且带注释的正则
 define("GLOBAL_PARAM_REGEX", "/\s*@\s*([\w-]*)\s*:\s*(.*)\s*/");                // 全局变量正则
-define("REQUEST_PARAM_REGEX", "/^\s*---\s*(header|get|post)\s*(#.*?)?\s*$/");   // 请求参数标识的正则
+define("REQUEST_PARAM_REGEX", "/^\s*---\s*(header|get|post|cookie)\s*(#.*?)?\s*$/");   // 请求参数标识的正则
 
 $test_file = isset($argv[1]) ? $argv[1] : '';
 
@@ -22,11 +22,15 @@ if ($argc < 2 || !file_exists($test_file)) {
 $test_content = array_filter(explode("\n", $test_content), function ($line) {
     return !(empty($line) || preg_match(COMMENT_REGEX, $line));
 });
+$line_numbers = array_map(function ($num) {
+    return ++$num;
+}, array_keys($test_content));
 $lines = array_values($test_content);
 
 $_HEADER = [];
 $_POST = [];
 $_GET = [];
+$_COOKIE = [];
 $_CONFIG = [
     "BASE_URL" => "http://127.0.0.1",
 ];
@@ -60,6 +64,8 @@ for (; $i < sizeof($lines); $i++) {
             $_GET += $match_param;
         } elseif ($request_param_type_match[1] == "post") {
             $_POST += $match_param;
+        } elseif ($request_param_type_match[1] == "cookie") {
+            $_COOKIE += $match_param;
         }
     } else {
         break;
@@ -75,7 +81,7 @@ for (; $i < sizeof($lines); $i++) {
         $api['index'] = $api_index++;
         $api['title'] = trim($match[1]);
     } else {
-        printf("api格式不正确，error in \"%s\"\n", trim($lines[$i]));
+        printf("api格式不正确，错误行数 %d \"%s\"\n", $line_numbers[$i], trim($lines[$i]));
         exit(1);
     }
 
@@ -151,7 +157,8 @@ curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false); // 从证书中检查SSL加密�
 $api = $api_list[$test_index - 1];
 $api['header'] = array_merge($_HEADER, $api['header'] ?? []);
 $api['get'] = array_merge($_GET, $api['get'] ?? []);
-$api['post'] = array_merge($_GET, $api['post'] ?? []);
+$api['post'] = array_merge($_POST, $api['post'] ?? []);
+$api['cookie'] = array_merge($_COOKIE, $api['cookie'] ?? []);
 if (!empty($api['get'])) {
     if (strpos($api['uri'], "?") === false) {
         $request_url = $api['uri'] . "?" . http_build_query($api['get']);
@@ -187,11 +194,22 @@ $api['header'] = [];
 foreach ($tmp as $key => $val) {
     array_push($api['header'], "$key: $val");
 }
+if (!empty($api['cookie'])) {
+    $cookie = [];
+    foreach ($api['cookie'] as $key => $val) {
+        $cookie[] = sprintf("%s=%s", urlencode($key), urlencode($val));
+    }
+    array_push($api['header'], sprintf("Cookie: %s", implode("; ", $cookie)));
+}
+unset($api['cookie']);
+
 curl_setopt($ch, CURLOPT_URL, $_CONFIG['BASE_URL'] . $request_url);
 curl_setopt($ch, CURLOPT_HTTPHEADER, $api['header']);
 
 printf("%s %s\n\n", $api['method'], $_CONFIG['BASE_URL'] . $request_url);
-printf("REQUEST: %s\nRESPONSE: ", var_export($api, true));
+printf("REQUEST: %s\nRESPONSE: ",
+    json_encode($api, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE)
+);
 
 $response = curl_exec($ch);
 
@@ -201,7 +219,10 @@ if ($response === false) {
 }
 curl_close($ch);
 try {
-    $res = json_encode(json_decode($response, true), JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
+    $res = json_encode(
+        json_decode($response, true),
+        JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE
+    );
     if ($res == null || $res == "null") {
         throw new Exception();
     } else {

@@ -13,14 +13,17 @@ Content-Type: application/x-www-form-urlencoded
 
 # 全局GET参数
 --- get
-token: 1b4197f70b8beda077a70144d1abe982     # 万能toten
+token: 1b4197f70b8beda077a70144d1abe982
 output: json
 user_id: 90002486
 
 # 全局POST参数，仅适用POST接口
 --- post
-token: 1b4197f70b8beda077a70144d1abe982     # 万能toten
+token: 1b4197f70b8beda077a70144d1abe982
 
+# 全局cookie
+--- cookie
+token: 1b4197f70b8beda077a70144d1abe982
 
 # 定义一个接口，`===` 是一个接口的起始标志符
 === Test: /m/user/get 获取用户信息接口

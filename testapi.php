@@ -22,7 +22,7 @@ if ($argc < 2 || !file_exists($test_file)) {
 $test_content = array_filter(explode("\n", $test_content), function ($line) {
     return !(empty($line) || preg_match(COMMENT_REGEX, $line));
 });
-$test_content = implode("\n", $test_content);
+$lines = array_values($test_content);
 
 $_HEADER = [];
 $_POST = [];
@@ -30,22 +30,20 @@ $_GET = [];
 $_CONFIG = [
     "BASE_URL" => "http://127.0.0.1",
 ];
+$i = 0;
 // 解析全局配置
-preg_match_all(GLOBAL_PARAM_REGEX, $test_content, $base_config_match);
-if (!empty($base_config_match)) {
-    foreach ($base_config_match[0] as $key => $val) {
-        $_CONFIG[$base_config_match[1][$key]] = $base_config_match[2][$key];
+while ($i < sizeof($lines)) {
+    preg_match(GLOBAL_PARAM_REGEX, $lines[$i], $base_config_match);
+    if (!empty($base_config_match)) {
+        $_CONFIG[$base_config_match[1]] = trim($base_config_match[2]);
+    } else {
+        break;
     }
-    if (isset($_CONFIG['USER_AGENT'])) {
-        $_HEADER['User-Agent'] = $_CONFIG['USER_AGENT'];
-    }
+    $i++;
 }
 
 // 解析header
-preg_match("/([\s\S]*?)===/", $test_content, $head_match);
-$lines = explode("\n", trim($head_match[1]));
-
-for ($i = 1; $i < sizeof($lines); $i++) {
+for (; $i < sizeof($lines); $i++) {
     if (preg_match(REQUEST_PARAM_REGEX, $lines[$i], $request_param_type_match)) {
         $match_param = [];
         while (++$i < sizeof($lines)) {
@@ -63,31 +61,25 @@ for ($i = 1; $i < sizeof($lines); $i++) {
         } elseif ($request_param_type_match[1] == "post") {
             $_POST += $match_param;
         }
+    } else {
+        break;
     }
 }
 
 $api_list = [];
-$api_list_match = [];
-preg_match("/===([\s\S]*)/", $test_content, $api_list_match);
-$api_list_match = explode("===", $api_list_match[1]);
 
 $api_index = 1;
-foreach ($api_list_match as $val) {
-    $lines = explode("\n", $val);
-    if (sizeof($lines) < 3) {
-        printf("api格式不正确\n%s\n", $val);
-        exit(1);
-    }
+for (; $i < sizeof($lines); $i++) {
     $api = ['header' => []];
-    if (preg_match("/^\s*Test\s*:\s*(.*)/", $lines[0], $match)) {
+    if (preg_match("/^\s*===\s*Test\s*:\s*(.*)/", $lines[$i], $match)) {
         $api['index'] = $api_index++;
         $api['title'] = trim($match[1]);
     } else {
-        printf("api格式不正确\n%s\n", $val);
+        printf("api格式不正确，error in \"%s\"\n", trim($lines[$i]));
         exit(1);
     }
 
-    for ($i = 1; $i < sizeof($lines); $i++) {
+    for ($i += 1; $i < sizeof($lines); $i++) {
         if (preg_match("/---\s*request/", $lines[$i])) {
             // request 请求定义
             while (++$i < sizeof($lines)) {
@@ -95,7 +87,7 @@ foreach ($api_list_match as $val) {
                     $api['method'] = $match[1];
                     $api['uri'] = trim($match[2]);
                     if (empty($api['method']) || empty($api['uri'])) {
-                        printf("api格式不正确\n%s\n", $val);
+                        printf("api格式不正确\n%s\n", $lines[$i]);
                         exit(1);
                     }
                     break;
@@ -123,6 +115,9 @@ foreach ($api_list_match as $val) {
             }
 
             $api[$request_param_type_match[1]] = $match_param;
+        } else {
+            $i--;
+            break;
         }
     }
     $api_list[] = $api;

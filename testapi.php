@@ -201,14 +201,19 @@ if (!empty($api['cookie'])) {
     }
     array_push($api['header'], sprintf("Cookie: %s", implode("; ", $cookie)));
 }
-unset($api['cookie']);
 
 curl_setopt($ch, CURLOPT_URL, $_CONFIG['BASE_URL'] . $request_url);
 curl_setopt($ch, CURLOPT_HTTPHEADER, $api['header']);
 
+$request = [];
+empty($api['header']) || $request['header'] = $api['header'];
+empty($api['uri']) || $request['uri'] = $api['method'] . ' ' . $api['uri'];
+empty($api['get']) || $request['get'] = $api['get'];
+($request['method'] == "POST") && !empty($api['post']) && $request['post'] = $api['post'];
+
 printf("%s %s\n\n", $api['method'], $_CONFIG['BASE_URL'] . $request_url);
 printf("REQUEST: %s\nRESPONSE: ",
-    json_encode($api, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE)
+    json_encode($request, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE)
 );
 
 $response = curl_exec($ch);

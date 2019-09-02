@@ -113,7 +113,17 @@ for (; $i < sizeof($lines); $i++) {
             $match_param = [];
             while (++$i < sizeof($lines)) {
                 if (preg_match(KEY_VALUE_REGEX, $lines[$i], $match)) {
-                    $match_param[$match[1]] = trim($match[2]);
+                    if ($match[2] == '```') {
+                        $match_param[$match[1]] = '';
+                        while ($i++) {
+                            if ($lines[$i] == '```') {
+                                break;
+                            }
+                            $match_param[$match[1]] .= $lines[$i];
+                        }
+                    } else {
+                        $match_param[$match[1]] = trim($match[2]);
+                    }
                 } else {
                     $i--;
                     break;

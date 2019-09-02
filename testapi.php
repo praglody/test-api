@@ -119,7 +119,6 @@ for (; $i < sizeof($lines); $i++) {
                     break;
                 }
             }
-
             $api[$request_param_type_match[1]] = $match_param;
         } else {
             $i--;
@@ -183,7 +182,7 @@ if ($api['method'] == "GET") {
             $api['header']['Content-Type'] = "multipart/form-data";
         } else {
             $api['header']['Content-Type'] = "application/x-www-form-urlencoded";
-            $post_data = http_build_query($api['param']);
+            $post_data = http_build_query($api['post']);
         }
         curl_setopt($ch, CURLOPT_POSTFIELDS, $post_data);
     }
@@ -209,7 +208,7 @@ $request = [];
 empty($api['header']) || $request['header'] = $api['header'];
 empty($api['uri']) || $request['uri'] = $api['method'] . ' ' . $api['uri'];
 empty($api['get']) || $request['get'] = $api['get'];
-($request['method'] == "POST") && !empty($api['post']) && $request['post'] = $api['post'];
+($api['method'] == "POST") && !empty($api['post']) && $request['post'] = $api['post'];
 
 printf("%s %s\n\n", $api['method'], $_CONFIG['BASE_URL'] . $request_url);
 printf("REQUEST: %s\nRESPONSE: ",

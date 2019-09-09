@@ -13,6 +13,12 @@ if ($argc < 3) {
     printf("Usage: ./$file [api.pl] [api_id]\n");
 }
 
+if (isset($argv[3]) && $argv[3] == "--test") {
+    define("ENVIRONMENT", "TEST");
+} else {
+    define("ENVIRONMENT", "LOCAL");
+}
+
 if ($argc < 2 || !file_exists($test_file)) {
     exit(1);
 } else {
@@ -44,6 +50,10 @@ while ($i < sizeof($lines)) {
         break;
     }
     $i++;
+}
+
+if (ENVIRONMENT == "TEST" && isset($_CONFIG['TEST_BASE_URL'])) {
+    $_CONFIG['BASE_URL'] = $_CONFIG['TEST_BASE_URL'];
 }
 
 // 解析header
